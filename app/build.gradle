@@ -26,4 +26,9 @@ dependencies {
     androidTestImplementation 'com.android.support.test:runner:1.0.2'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
 
+    // added for package: com.google.atap.tangoservice -libn
+    compile "com.google.tango:sdk-base:1.55"
+    compile "com.google.tango:sdk-support:1.55"
+    compile "com.google.tango:sdk-depth-interpolation:1.55"
+    compile "com.google.tango:sdk-transform-helpers:1.55"
 }
