@@ -55,7 +55,9 @@ import com.google.tango.transformhelpers.TangoTransformHelper;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -87,6 +89,7 @@ import org.tensorflow.demo.env.ImageUtils;
 import org.tensorflow.demo.env.Logger;
 import org.tensorflow.demo.R;
 
+
 /**
  * Created by manjekarbudhai on 7/27/17.
  */
@@ -113,6 +116,9 @@ public class MainActivity extends CameraActivity  {
     private TangoPointCloudData PointCloudData;
     private float[] points_rough;
 
+    private String fileContent = "";    // read external file. -libn
+
+
 
     private class MeasuredPoint {
         public double mTimestamp;
@@ -127,6 +133,25 @@ public class MainActivity extends CameraActivity  {
     @Override
     public void onCreate(Bundle savedInstanceState){
         // GLSurfaceView for RGB color camera
+
+        // read external file to get server IP. -libn
+        File extStore = Environment.getExternalStorageDirectory();
+        String path = extStore.getAbsolutePath() + "/Tango_Image_Read/Server_IP.txt";
+        String s = "";
+
+        try {
+            File myFile = new File(path);
+            FileInputStream fIn = new FileInputStream(myFile);
+            BufferedReader myReader = new BufferedReader(new InputStreamReader(fIn));
+            s = myReader.readLine();    // read one line. -libn
+            fileContent += s;
+            myReader.close();
+            Log.w("Tango_depth",fileContent);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
 
         tts1=new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
             @Override
@@ -507,7 +532,7 @@ public class MainActivity extends CameraActivity  {
         }
         try{
             // 3) configure the connection. -libn
-            URL url = new URL("http","192.168.2.5",8080,"jsontttt");
+            URL url = new URL("http",fileContent,8080,"jsontttt");
             urlConnection = (HttpURLConnection) url.openConnection();
             Log.v("makeRequest", "Made connection to " + url.toString());
 //            publishProgress(10);
