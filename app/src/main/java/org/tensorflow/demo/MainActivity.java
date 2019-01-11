@@ -25,6 +25,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.SystemClock;
 import android.os.Trace;
+import android.util.Base64;
 import android.util.Log;
 import android.util.Size;
 import android.util.TypedValue;
@@ -66,6 +67,7 @@ import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -103,8 +105,14 @@ public class MainActivity extends CameraActivity  {
     private Matrix rgbImageToDepthImage;
     TextToSpeech tts1;
 
-    private TangoPointCloudData PointCloudData;
+    private int image_width = 320;
+    private int image_height = 240;
     private Bitmap rgbFrameBitmap = null;
+    private String imageEncoded;
+
+    private TangoPointCloudData PointCloudData;
+    private float[] points_rough;
+
 
     private class MeasuredPoint {
         public double mTimestamp;
@@ -131,7 +139,7 @@ public class MainActivity extends CameraActivity  {
 
 
         rgbImageToDepthImage = ImageUtils.getTransformationMatrix(
-                320, 240,
+                image_width, image_height,
                 1920, 1080,
                 0, true);
 
@@ -280,7 +288,7 @@ public class MainActivity extends CameraActivity  {
     public Point getCameraFrameSize(int cameraId) {
         // TangoCameraIntrinsics intrinsics = mTango.getCameraIntrinsics(cameraId);
         // return new Point(intrinsics.width, intrinsics.height);
-        return new Point(320, 240);
+        return new Point(image_width, image_height);
         //   return new Point(1280, 720);
     }
 
@@ -312,9 +320,24 @@ public class MainActivity extends CameraActivity  {
                     int size = PointCloudData.numPoints;
                     FloatBuffer floatBuffer = PointCloudData.points;
                     floatBuffer.rewind();
+
+                    // reduce accuracy of pointcloud data. -libn
+                    float[] points = new float[size * 3];
+                    points_rough = new float[size * 3];
+                    floatBuffer.get(points);
+                    floatBuffer.rewind();
+
+                    // test rough accuracy to save data. -libn
+                    DecimalFormat df = new DecimalFormat("#.##");
+                    for(int i = 0; i < points.length; i++)
+                    {
+                        points_rough[i] = Float.valueOf(df.format(points[i]));
+                    }
+
 //                    Log.w("Tango_depth","I get Depth Data!");
 //                    Log.w("Tango_depth","PointCloud data available!");
 //                    Log.w("Tango_depth",String.format("PointCloud data size = %d", size));
+
                 }
 
                 @Override
@@ -336,10 +359,20 @@ public class MainActivity extends CameraActivity  {
                         view_.requestRender();
                         if(renderer_.argbInt != null){
                             // get rgb raw data: -libn
-                            int width = 320;
-                            int height = 240;
-                            rgbFrameBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
-                            rgbFrameBitmap.setPixels(renderer_.argbInt, 0, width, 0, 0, width, height);
+                            rgbFrameBitmap = Bitmap.createBitmap(image_width, image_height, Bitmap.Config.ARGB_8888);
+                            rgbFrameBitmap.setPixels(renderer_.argbInt, 0, image_width, 0, 0, image_width, image_height);
+
+
+
+                            // 5) save Bitmap in byte[] using Base64
+                            // ref: https://stackoverflow.com/questions/4989182/converting-java-bitmap-to-byte-array
+                            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                            rgbFrameBitmap.compress(Bitmap.CompressFormat.PNG, 90, baos);
+                            byte[] b_base64 = baos.toByteArray();
+                            imageEncoded = Base64.encodeToString(b_base64, Base64.DEFAULT);
+
+
+
 //                            ImageUtils.saveBitmap(rgbFrameBitmap,"rgbFrameBitmap_in_renderer.png");
 //                            Log.w("Tango_depth","I get Camera Data.");
 
@@ -434,25 +467,25 @@ public class MainActivity extends CameraActivity  {
     }
 
 
-    public boolean getOrientationDir(PointF bbox_in){
-        boolean isClockwise = false;
-        float adjacent = 320.0f - 640.0f*bbox_in.x;
-        if(adjacent < 0.f){
-            isClockwise = true;
-        }
-        else{
-            isClockwise = false;
-        }
-        return isClockwise;
-    }
+//    public boolean getOrientationDir(PointF bbox_in){
+//        boolean isClockwise = false;
+//        float adjacent = 320.0f - 640.0f*bbox_in.x;
+//        if(adjacent < 0.f){
+//            isClockwise = true;
+//        }
+//        else{
+//            isClockwise = false;
+//        }
+//        return isClockwise;
+//    }
 
-    public double getOrientationVal(PointF bbox_in){
-        double orientation = 0;
-        double adjacent = (double)(480.0f - 480.0f*bbox_in.y);
-        double opposite = (double)(Math.abs((320.0f - 640.0f*bbox_in.x)));
-        orientation = Math.toDegrees(Math.atan(opposite/adjacent));
-        return orientation;
-    }
+//    public double getOrientationVal(PointF bbox_in){
+//        double orientation = 0;
+//        double adjacent = (double)(480.0f - 480.0f*bbox_in.y);
+//        double opposite = (double)(Math.abs((320.0f - 640.0f*bbox_in.x)));
+//        orientation = Math.toDegrees(Math.atan(opposite/adjacent));
+//        return orientation;
+//    }
 
 
     // send PointCloud data to server. -libn
@@ -508,17 +541,17 @@ public class MainActivity extends CameraActivity  {
                     sb.append("\n");
                 }
                 br.close();
-                // 5) save the response from server. -libn
-                File f = new File(Environment.getExternalStorageDirectory().getAbsolutePath() + "/objects");
-                if (!f.exists()) {
-                    f.mkdirs();
-                }
-                final File file = new File(f,"test_libn_2.txt");
-                OutputStream outputfilestream = new FileOutputStream(file);
-                outputfilestream.write(sb.toString().getBytes());
-                outputfilestream.close();
+//                // 5) save the response from server. -libn
+//                File f = new File(Environment.getExternalStorageDirectory().getAbsolutePath() + "/objects");
+//                if (!f.exists()) {
+//                    f.mkdirs();
+//                }
+//                final File file = new File(f,"test_libn_2.txt");
+//                OutputStream outputfilestream = new FileOutputStream(file);
+//                outputfilestream.write(sb.toString().getBytes());
+//                outputfilestream.close();
 
-                Log.w("Tango_depth","Object file saved!");
+//                Log.w("Tango_depth","Object file saved!");
 
             } else {
                 System.out.println(urlConnection.getResponseMessage());
@@ -530,50 +563,6 @@ public class MainActivity extends CameraActivity  {
         }
         return true;
     }
-//
-//    // 6) do something after getting response from server. -libn
-//    @Override
-//    protected void onPostExecute(Boolean aBoolean) {
-////            Toast.makeText(MainMenu.this,"Saved",Toast.LENGTH_LONG).show();
-////            d.dismiss();
-////            AlertDialog.Builder a = new AlertDialog.Builder(MainMenu.this);
-////            a.setMessage("Open File?");
-////            a.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-////                @Override
-////                public void onClick(DialogInterface dialog, int which) {
-////                    openFile();
-////                }
-////            });
-////            a.setNegativeButton("No", new DialogInterface.OnClickListener() {
-////                @Override
-////                public void onClick(DialogInterface dialog, int which) {
-////                    dialog.cancel();
-////                }
-////            });
-////            a.show();
-//    }
-
-//    @Override
-//    protected void onProgressUpdate(Integer... values) {
-////            d.setProgress(values[0]);
-////            switch(values[0]){
-////                case 0:
-////                    d.setMessage("Making Connection");
-////                    break;
-////                case 15:
-////                    d.setMessage("Posting Data");
-////                    break;
-////                case 25:
-////                    d.setMessage("Waiting for Server to Parse Data");
-////                    break;
-////                case 75:
-////                    d.setMessage("Writing File");
-////                    break;
-////            }
-////            if(values[0]==75){
-////                d.setMessage("Receiving File");
-////            }
-//    }
 
     // package the data in JSON form. -libn
     private JSONObject getJSONObject(){
@@ -606,30 +595,54 @@ public class MainActivity extends CameraActivity  {
 //        }
 
         // 2 send data to server: ~1.5Hz
-        int size = PointCloudData.numPoints;
-        FloatBuffer floatBuffer = PointCloudData.points;
-        float[] points = new float[size * 3];
 
-        floatBuffer.get(points);
-        floatBuffer.rewind();
         JSONObject jsonObject = new JSONObject();
         try {
 
-            jsonObject.put("front", Arrays.toString(points)); // time delay: toString(): ~0.3s; sending data: ~0.3s
+            // save PointCloud data. -libn
+            jsonObject.put("front", Arrays.toString(points_rough)); // time delay: sending data: ~1s
 
-//            jsonObject.put("Bitmap", rgbFrameBitmap.toString()); // time delay: toString(): ~0.3s; sending data: ~0.3s
-            ByteArrayOutputStream stream = new ByteArrayOutputStream();
-            rgbFrameBitmap.compress(Bitmap.CompressFormat.JPEG, 100,stream);
-            byte[] byteArray = stream.toByteArray();
-            Log.w("Tango_depth",String.format("byteArray.length = %d",byteArray.length));
-//            jsonObject.put("Bitmap", byteArray.toString()); // time delay: toString(): ~0.3s; sending data: ~0.3s
-            jsonObject.put("Bitmap", stream.toString()); // time delay: toString(): ~0.3s; sending data: ~0.3s
 
+            // send ColorImage data. -libn
+//            jsonObject.put("Bitmap444", imageEncoded); // time delay: sending data: ~0.3s
+//            jsonObject.put("Bitmap444", "aaa"); // time delay: if there is no data: ~0.02s!
+
+
+
+            // raw image sending test. -libn -20190111
+            // 1) send Bitmap: No valid data!
+//            jsonObject.put("Bitmap000", rgbFrameBitmap.toString()); // time delay: toString(): ~0.3s; sending data: ~0.3s
+//
+//
+//            // 2) send ByteBuffer: data exists!
+//            int size_img     = rgbFrameBitmap.getRowBytes() * rgbFrameBitmap.getHeight();
+//            ByteBuffer b = ByteBuffer.allocate(size_img);
+//            rgbFrameBitmap.copyPixelsToBuffer(b);
+//            jsonObject.put("Bitmap111", b.toString()); // time delay: toString(): ~0.3s; sending data: ~0.3s
+//
+//            // 3) send image in ByteArray: data exists!
+//            ByteArrayOutputStream stream = new ByteArrayOutputStream();
+//            rgbFrameBitmap.compress(Bitmap.CompressFormat.JPEG, 100,stream);
+//            byte[] byteArray = stream.toByteArray();
+//            Log.w("Tango_depth",String.format("byteArray.length = %d",byteArray.length));
+//            jsonObject.put("Bitmap222", Arrays.toString(byteArray)); // time delay: toString(): ~0.3s; sending data: ~0.3s
+//
+//            // 4) Bitmap to byte
+//            int size_byte = rgbFrameBitmap.getRowBytes() * rgbFrameBitmap.getHeight();
+//            ByteBuffer byteBuffer = ByteBuffer.allocate(size_byte);
+//            rgbFrameBitmap.copyPixelsToBuffer(byteBuffer);
+//            byte[] byteArray333 = byteBuffer.array();
+//            jsonObject.put("Bitmap333", Arrays.toString(byteArray333)); // time delay: toString(): ~0.3s; sending data: ~0.3s
+
+
+
+            // Transfer pointCloudData in files. -libn
 //            // test transformation delay. -libn
 //            Arrays.toString(points);    // time delay: ~0.3s
 //            jsonObject.put("front", "aaa");
 //                else if (f.equals(backFileName + ".pcd"))
 //                    jsonObject.put("back", text.toString());
+
         } catch(JSONException e){
             Log.e("getJSONObject","JSON Exception");
         }
