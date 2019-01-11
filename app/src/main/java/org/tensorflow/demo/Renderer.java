@@ -180,39 +180,6 @@ class Renderer implements GLSurfaceView.Renderer {
       glViewport(0, 0, width, height);
    }
 
-   /* public static int[] decodeYUV420SPtoRGB(byte[] yuv420sp, int width, int height) {
-      if (yuv420sp == null) throw new NullPointerException();
-
-      final int frameSize = width * height;
-      int[] rgb = new int[frameSize];
-
-      for (int j = 0, yp = 0; j < height; j++) {
-         int uvp = frameSize + (j >> 1) * width, u = 0, v = 0;
-         for (int i = 0; i < width; i++, yp++) {
-            int y = (0xff & (yuv420sp[yp])) - 16;
-            if (y < 0) y = 0;
-            if ((i & 1) == 0) {
-               v = (0xff & yuv420sp[uvp++]) - 128;
-               u = (0xff & yuv420sp[uvp++]) - 128;
-            }
-            int y1192 = 1192 * y;
-            int r = (y1192 + 1634 * v);
-            int g = (y1192 - 833 * v - 400 * u);
-            int b = (y1192 + 2066 * u);
-
-            if (r < 0) r = 0;
-            else if (r > 262143) r = 262143;
-            if (g < 0) g = 0;
-            else if (g > 262143) g = 262143;
-            if (b < 0) b = 0;
-            else if (b > 262143) b = 262143;
-
-            rgb[yp] = 0xff000000 | ((r << 6) & 0xff0000) | ((g >> 2) & 0xff00) | ((b >> 10) & 0xff);
-         }
-      }
-      return rgb;
-   }  */
-
    private static byte[] decodeYUV420SPtoY(byte[] yuv420sp, int width, int height) {
       if (yuv420sp == null) throw new NullPointerException();
 
@@ -243,19 +210,6 @@ class Renderer implements GLSurfaceView.Renderer {
    @Override
    public void onDrawFrame(GL10 gl) {
       activity_.updateTexture(TangoCameraIntrinsics.TANGO_CAMERA_COLOR);
-
-      /* if(argbInt != null) {
-           glBindBuffer(GL_ARRAY_BUFFER, videoVertexBuffer_);
-           glVertexAttribPointer(videoVertexAttribute_, 2, GL_BYTE, false, 0, 0);
-           glEnableVertexAttribArray(videoVertexAttribute_);
-           glActiveTexture(GL_TEXTURE0);
-           glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, videoTextureName_);
-           glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-           glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-           glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
-           return;
-       }*/
 
       glBindBuffer(GL_ARRAY_BUFFER, videoVertexBuffer_);
       glVertexAttribPointer(videoVertexAttribute_, 2, GL_BYTE, false, 0, 0);
@@ -291,10 +245,12 @@ class Renderer implements GLSurfaceView.Renderer {
       glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
       glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
+      // 2) allocate buffer. -libn
       // Read offscreen buffer.
       IntBuffer intBuffer = ByteBuffer.allocateDirect(offscreenSize_.x * offscreenSize_.y * 4)
               .order(ByteOrder.nativeOrder())
               .asIntBuffer();
+      // 3) get pixels. -libn
       glReadPixels(0, 0, offscreenSize_.x, offscreenSize_.y, GL_RGBA, GL_UNSIGNED_BYTE, intBuffer.rewind());
 
       // Restore onscreen state.
@@ -304,18 +260,17 @@ class Renderer implements GLSurfaceView.Renderer {
               glGetUniformLocation(videoProgram_, "cap"),
               0);
 
+      // 4) save pixels to image. -libn
       // Convert to an array for Bitmap.createBitmap().
       int[] pixels = new int[intBuffer.capacity()];
       intBuffer.rewind();
       intBuffer.get(pixels);
-
       argbInt = pixels; // will be accessed from the processing task in NavigationActitivty
-
-      // get rgb raw data: -libn
-      Bitmap rgbFrameBitmap = null;
-      rgbFrameBitmap = Bitmap.createBitmap(640, 480, Bitmap.Config.ARGB_8888);
-      rgbFrameBitmap.setPixels(argbInt, 0, 640, 0, 0, 640, 480);
-      ImageUtils.saveBitmap(rgbFrameBitmap,"rgbFrameBitmap_in_renderer.png");
+//      // get rgb raw data: -libn
+//      Bitmap rgbFrameBitmap = null;
+//      rgbFrameBitmap = Bitmap.createBitmap(640, 480, Bitmap.Config.ARGB_8888);
+//      rgbFrameBitmap.setPixels(argbInt, 0, 640, 0, 0, 640, 480);
+//      ImageUtils.saveBitmap(rgbFrameBitmap,"rgbFrameBitmap_in_renderer.png");
    }
 
    void saveFrame() {
