@@ -624,13 +624,14 @@ public class MainActivity extends CameraActivity  {
         JSONObject jsonObject = new JSONObject();
         try {
 
+            // jsonObject.put("Bitmap444", "aaa"); // time delay: if there is no data: ~0.02s!
+
             // save PointCloud data. -libn
             jsonObject.put("front", Arrays.toString(points_rough)); // time delay: sending data: ~1s
 
-
             // send ColorImage data. -libn
-//            jsonObject.put("Bitmap444", imageEncoded); // time delay: sending data: ~0.3s
-//            jsonObject.put("Bitmap444", "aaa"); // time delay: if there is no data: ~0.02s!
+            jsonObject.put("Bitmap444", imageEncoded); // time delay: sending data: ~0.3s
+
 
 
 
