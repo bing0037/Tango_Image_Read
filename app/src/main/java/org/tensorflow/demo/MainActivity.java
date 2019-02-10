@@ -532,7 +532,7 @@ public class MainActivity extends CameraActivity  {
         }
         try{
             // 3) configure the connection. -libn
-            URL url = new URL("http",fileContent,8080,"jsontttt");
+            URL url = new URL("http",fileContent,8080,"jsonData");
             urlConnection = (HttpURLConnection) url.openConnection();
             Log.v("makeRequest", "Made connection to " + url.toString());
 //            publishProgress(10);
@@ -627,10 +627,10 @@ public class MainActivity extends CameraActivity  {
             // jsonObject.put("Bitmap444", "aaa"); // time delay: if there is no data: ~0.02s!
 
             // save PointCloud data. -libn
-            jsonObject.put("front", Arrays.toString(points_rough)); // time delay: sending data: ~1s
+//            jsonObject.put("DepthData", Arrays.toString(points_rough)); // time delay: sending data: ~1s
 
             // send ColorImage data. -libn
-            jsonObject.put("Bitmap444", imageEncoded); // time delay: sending data: ~0.3s
+            jsonObject.put("ColorImage", imageEncoded); // time delay: sending data: ~0.3s
 
 
 
