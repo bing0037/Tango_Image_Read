@@ -122,6 +122,8 @@ public class MainActivity extends CameraActivity  {
     // get the position(x,y) of the pixel.
     public List<PointF> rectDepthxy = new LinkedList<PointF>();
 
+    private int voice_count = 0;
+
 
     private class MeasuredPoint {
         public double mTimestamp;
@@ -531,6 +533,15 @@ public class MainActivity extends CameraActivity  {
                             {
                                 Log.w("Tango_depth",String.format("Position of pixel (%f, %f) is (%f, %f, %f)", center_xy.x, center_xy.y,
                                         m.mDepthTPoint[0], m.mDepthTPoint[1], m.mDepthTPoint[2]));
+
+                                voice_count++;
+                                if(voice_count > 20)
+                                {
+                                    voice_count = 0;
+                                    tts1.speak(String.format("Depth %.2f",m.mDepthTPoint[2]),TextToSpeech.QUEUE_ADD,null,"Detected");
+                                }
+
+
 
 //                                // +) save the depth data to phone. -libn
 //                                File extStore = Environment.getExternalStorageDirectory();
