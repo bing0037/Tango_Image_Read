@@ -92,7 +92,7 @@ import org.tensorflow.demo.R;
 
 
 /**
- * Created by manjekarbudhai on 7/27/17.
+ * Created by Bingbing Li on 12/25/18.
  */
 
 public class MainActivity extends CameraActivity  {
@@ -413,9 +413,6 @@ public class MainActivity extends CameraActivity  {
 //                    Log.w("Tango_depth","PointCloud data available!");
 //                    Log.w("Tango_depth",String.format("PointCloud data size = %d", size));
 
-
-
-
                 }
 
                 @Override
@@ -449,8 +446,7 @@ public class MainActivity extends CameraActivity  {
                             byte[] b_base64 = baos.toByteArray();
                             imageEncoded = Base64.encodeToString(b_base64, Base64.DEFAULT);
 
-
-
+                            // save Bitmap on phone.
 //                            ImageUtils.saveBitmap(rgbFrameBitmap,"rgbFrameBitmap_in_renderer.png");
 //                            Log.w("Tango_depth","I get Camera Data.");
 
@@ -649,26 +645,6 @@ public class MainActivity extends CameraActivity  {
     }
 
 
-//    public boolean getOrientationDir(PointF bbox_in){
-//        boolean isClockwise = false;
-//        float adjacent = 320.0f - 640.0f*bbox_in.x;
-//        if(adjacent < 0.f){
-//            isClockwise = true;
-//        }
-//        else{
-//            isClockwise = false;
-//        }
-//        return isClockwise;
-//    }
-
-//    public double getOrientationVal(PointF bbox_in){
-//        double orientation = 0;
-//        double adjacent = (double)(480.0f - 480.0f*bbox_in.y);
-//        double opposite = (double)(Math.abs((320.0f - 640.0f*bbox_in.x)));
-//        orientation = Math.toDegrees(Math.atan(opposite/adjacent));
-//        return orientation;
-//    }
-
 
     // send PointCloud data to server. -libn
     protected Boolean sendPointCloudData() {
@@ -764,74 +740,14 @@ public class MainActivity extends CameraActivity  {
     // package the data in JSON form. -libn
     private JSONObject getJSONObject(){
 
-//        // 1 send file to server: ~1.25Hz
-//        String files[]={"test_libn_2.pcd"};
-//        JSONObject jsonObject = new JSONObject();
-//        for(String f: files) {
-//            StringBuilder text = new StringBuilder();
-//            File file = new File(Environment.getExternalStorageDirectory().getAbsolutePath() + "/pointclouds/" + f);
-//            try {
-//                BufferedReader bufferedReader = new BufferedReader(new FileReader(file));
-//                String line;
-//                while ((line = bufferedReader.readLine()) != null) {
-//                    text.append(line);
-//                    text.append('\n');
-//                }
-//                bufferedReader.close();
-//            } catch (IOException e) {
-//                Log.e("getJSONObject", "IO Exception");
-//            }
-//            try {
-////                if(f.equals(frontFileName + ".pcd"))
-//                jsonObject.put("front", text.toString());
-////                else if (f.equals(backFileName + ".pcd"))
-////                    jsonObject.put("back", text.toString());
-//            } catch(JSONException e){
-//                Log.e("getJSONObject","JSON Exception");
-//            }
-//        }
-
-        // 2 send data to server: ~1.5Hz
-
         JSONObject jsonObject = new JSONObject();
         try {
-
-            // jsonObject.put("Bitmap444", "aaa"); // time delay: if there is no data: ~0.02s!
 
             // save PointCloud data. -libn
 //            jsonObject.put("DepthData", Arrays.toString(points_rough)); // time delay: sending data: ~1s
 
             // send ColorImage data. -libn
             jsonObject.put("ColorImage", imageEncoded); // time delay: sending data: ~0.3s
-
-
-
-
-            // raw image sending test. -libn -20190111
-            // 1) send Bitmap: No valid data!
-//            jsonObject.put("Bitmap000", rgbFrameBitmap.toString()); // time delay: toString(): ~0.3s; sending data: ~0.3s
-//
-//
-//            // 2) send ByteBuffer: data exists!
-//            int size_img     = rgbFrameBitmap.getRowBytes() * rgbFrameBitmap.getHeight();
-//            ByteBuffer b = ByteBuffer.allocate(size_img);
-//            rgbFrameBitmap.copyPixelsToBuffer(b);
-//            jsonObject.put("Bitmap111", b.toString()); // time delay: toString(): ~0.3s; sending data: ~0.3s
-//
-//            // 3) send image in ByteArray: data exists!
-//            ByteArrayOutputStream stream = new ByteArrayOutputStream();
-//            rgbFrameBitmap.compress(Bitmap.CompressFormat.JPEG, 100,stream);
-//            byte[] byteArray = stream.toByteArray();
-//            Log.w("Tango_depth",String.format("byteArray.length = %d",byteArray.length));
-//            jsonObject.put("Bitmap222", Arrays.toString(byteArray)); // time delay: toString(): ~0.3s; sending data: ~0.3s
-//
-//            // 4) Bitmap to byte
-//            int size_byte = rgbFrameBitmap.getRowBytes() * rgbFrameBitmap.getHeight();
-//            ByteBuffer byteBuffer = ByteBuffer.allocate(size_byte);
-//            rgbFrameBitmap.copyPixelsToBuffer(byteBuffer);
-//            byte[] byteArray333 = byteBuffer.array();
-//            jsonObject.put("Bitmap333", Arrays.toString(byteArray333)); // time delay: toString(): ~0.3s; sending data: ~0.3s
-
 
 
             // Transfer pointCloudData in files. -libn
@@ -845,38 +761,8 @@ public class MainActivity extends CameraActivity  {
             Log.e("getJSONObject","JSON Exception");
         }
 
-//        for(String f: files) {
-////            StringBuilder text = new StringBuilder();
-////            File file = new File(Environment.getExternalStorageDirectory().getAbsolutePath() + "/pointclouds/" + f);
-////            try {
-////                BufferedReader bufferedReader = new BufferedReader(new FileReader(file));
-////                String line;
-////                while ((line = bufferedReader.readLine()) != null) {
-////                    text.append(line);
-////                    text.append('\n');
-////                }
-////                bufferedReader.close();
-////            } catch (IOException e) {
-////                Log.e("getJSONObject", "IO Exception");
-////            }
-//
-//        }
-
-        // 3 send std_dev to server:
-//        try {
-//            jsonObject.put("std_dev", 3);
-//        } catch (JSONException e){
-//            e.printStackTrace();
-//        }
-
         return jsonObject;
     }
-
-//    public boolean isOnline() {
-//        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-//        NetworkInfo netInfo = cm.getActiveNetworkInfo();
-//        return netInfo != null && netInfo.isConnected();
-//    }
 
 }
 
