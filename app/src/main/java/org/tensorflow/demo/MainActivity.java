@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.graphics.Point;
 import android.graphics.PointF;
+import android.graphics.Rect;
 import android.media.ImageReader;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
@@ -118,6 +119,8 @@ public class MainActivity extends CameraActivity  {
 
     private String fileContent = "";    // read external file. -libn
 
+    // get the position(x,y) of the pixel.
+    public List<PointF> rectDepthxy = new LinkedList<PointF>();
 
 
     private class MeasuredPoint {
@@ -128,6 +131,51 @@ public class MainActivity extends CameraActivity  {
             mTimestamp = timestamp;
             mDepthTPoint = depthTPoint;
         }
+    }
+
+    public MeasuredPoint getBboxDepth(float u, float v) {
+        TangoPointCloudData pointCloud = mPointCloudManager.getLatestPointCloud();
+        if (pointCloud == null) {
+            return null;
+        }
+
+        double rgbTimestamp;
+        TangoImageBuffer imageBuffer = mCurrentImageBuffer;
+        rgbTimestamp = imageBuffer.timestamp;
+
+        TangoPoseData depthlTcolorPose = TangoSupport.getPoseAtTime(
+                rgbTimestamp,
+                TangoPoseData.COORDINATE_FRAME_CAMERA_DEPTH,
+                TangoPoseData.COORDINATE_FRAME_CAMERA_COLOR,
+                TangoSupport.ENGINE_TANGO,
+                TangoSupport.ENGINE_TANGO,
+                TangoSupport.ROTATION_IGNORED);
+        if (depthlTcolorPose.statusCode != TangoPoseData.POSE_VALID) {
+            Log.w("getdepthBbox", "Could not get color camera transform at time "
+                    + rgbTimestamp);
+            return null;
+        }
+
+        float[] depthPoint;
+
+
+        depthPoint = TangoDepthInterpolation.getDepthAtPointBilateral(
+                pointCloud,
+                new double[] {0.0, 0.0, 0.0},
+                new double[] {0.0, 0.0, 0.0, 1.0},
+                imageBuffer,
+                u, v,
+                mDisplayRotation,
+                depthlTcolorPose.translation,
+                depthlTcolorPose.rotation);
+
+        if (depthPoint == null) {
+            Log.i("getBboxDepth()", "depth is null");
+            return null;
+        }
+        //Log.i("getBboxDepth()", String.format("x:%f, y:%f, z:%f",depthPoint[0],depthPoint[1],depthPoint[2]));
+        //tts1.speak("Depth detected",TextToSpeech.QUEUE_ADD,null,"Detected");
+        return new MeasuredPoint(rgbTimestamp, depthPoint);
     }
 
     @Override
@@ -363,6 +411,9 @@ public class MainActivity extends CameraActivity  {
 //                    Log.w("Tango_depth","PointCloud data available!");
 //                    Log.w("Tango_depth",String.format("PointCloud data size = %d", size));
 
+
+
+
                 }
 
                 @Override
@@ -401,6 +452,59 @@ public class MainActivity extends CameraActivity  {
 //                            ImageUtils.saveBitmap(rgbFrameBitmap,"rgbFrameBitmap_in_renderer.png");
 //                            Log.w("Tango_depth","I get Camera Data.");
 
+                            // TEST: get the position of the pixel: -libn
+                            // 1) get the transformation matrix from rgb frame to original frame. -libn
+//                            Log.w("Tango_depth",String.format("rgbImageToDepthImage: %s",rgbImageToDepthImage.toString()));
+
+                            // 2) choose a rectangle in the rgb frame:
+                            // Example: new RectF(positionX - radius, positionY - radius, positionX + radius, positionY + radius)
+                            final RectF rect =
+                                    new RectF(
+                                            0.f,
+                                            0.f,
+                                            160.f,
+                                            120.f);
+
+                            // 3) update the rectangle from rgb frame to original color image frame:
+                            Log.w("Orig coord: %s",rect.toString());
+                            rgbImageToDepthImage.mapRect(rect);
+                            Log.w("Updated coord: %s",rect.toString());
+
+
+                            // 4) normalize the position in original frame:
+                            rectDepthxy.clear();
+                            rectDepthxy.add(new PointF(rect.centerX()/1920.0f,rect.centerY()/1080.0f));
+//                            rectDepthxy.add(new PointF(900.f/1920.0f,900.f/1080.0f));
+
+//                            // 5) get the position(x,y,z) of the pixel(rectxy.x, rectxy.y):
+//                            PointF center_xy = rectDepthxy.get(0);
+//                            MeasuredPoint m = getBboxDepth(center_xy.x,center_xy.y);
+//
+//                            // 6) print the position(x,y,z) of the pixel:
+//                            Log.w("Tango_depth",String.format("Position of pixel (%f, %f) is (%f, %f, %f)", center_xy.x, center_xy.y,
+//                                    m.mDepthTPoint[0], m.mDepthTPoint[1], m.mDepthTPoint[2]));
+
+
+//                    // try to align depth image & color image. -libn
+//                    rectDepthxy.clear();
+//                    rectDepthxy.add(new PointF(0.1f,0.2f));
+////                    rectDepthxy.add(new PointF(rect.centerX()/1920.0f,rect.centerY()/1080.0f));
+//
+//                    for(PointF rect: rectDepthxy) {
+//                        MeasuredPoint m = getBboxDepth(rect.x,rect.y);
+//                        if (m.mDepthTPoint.length == 3) {
+//                            Log.w("Tango_depth",String.format("depth of the pixel: %f", (m.mDepthTPoint[2])));
+////                            if(m.mDepthTPoint[2] < closest_depth) {
+////                                closest_depth = m.mDepthTPoint[2];
+////                                closest_obstacle = new PointF(rect.x,rect.y);
+////
+////                            }
+//                        }
+//                    }
+
+
+
+
                         }
                     }
                 }
@@ -413,6 +517,48 @@ public class MainActivity extends CameraActivity  {
                             mCurrentImageBuffer = copyImageBuffer(tangoImageBuffer);
                             // Log.i("onFrame",String.format("Tango Image Size: %dx%d",
                             //     mCurrentImageBuffer.width,mCurrentImageBuffer.height));
+
+                            // 5) get the position(x,y,z) of the pixel(rectxy.x, rectxy.y):
+                            PointF center_xy = rectDepthxy.get(0);
+                            MeasuredPoint m = getBboxDepth(center_xy.x,center_xy.y);
+
+                            // 6) print the position(x,y,z) of the pixel:
+                            if(m == null)
+                            {
+                                Log.w("Tango_depth","Depth information is null");
+                            }
+                            else
+                            {
+                                Log.w("Tango_depth",String.format("Position of pixel (%f, %f) is (%f, %f, %f)", center_xy.x, center_xy.y,
+                                        m.mDepthTPoint[0], m.mDepthTPoint[1], m.mDepthTPoint[2]));
+
+//                                // +) save the depth data to phone. -libn
+//                                File extStore = Environment.getExternalStorageDirectory();
+//                                String path = extStore.getAbsolutePath() + "/Tango_Image_Read/Depth_data_info.txt";
+//
+//                                try {
+//                                    File myFile = new File(path);
+//                                    OutputStream outputfilestream = new FileOutputStream(myFile);
+//                                    outputfilestream.write("pixel(x,y):".getBytes());
+//                                    outputfilestream.write("\n".getBytes());
+//                                    outputfilestream.write(center_xy.toString().getBytes());
+//                                    outputfilestream.write("\n".getBytes());
+//
+//                                    outputfilestream.write("\n".getBytes());
+//                                    outputfilestream.write("position(x,y,z):".getBytes());
+//                                    outputfilestream.write("\n".getBytes());
+//                                    outputfilestream.write(Arrays.toString(m.mDepthTPoint).getBytes());
+//
+//
+////                                    outputfilestream.write(String.format("Position of pixel (%f, %f) is (%f, %f, %f)", center_xy.x, center_xy.y,
+////                                            m.mDepthTPoint[0], m.mDepthTPoint[1], m.mDepthTPoint[2]).getBytes());
+//                                    outputfilestream.close();
+//
+//                                } catch (IOException e) {
+//                                    e.printStackTrace();
+//                                }
+                            }
+
                         }
 
                         TangoImageBuffer copyImageBuffer(TangoImageBuffer imageBuffer) {
@@ -516,8 +662,23 @@ public class MainActivity extends CameraActivity  {
     // send PointCloud data to server. -libn
     protected Boolean sendPointCloudData() {
 
+//        // +Test) save the depth data to phone. -libn
+//        File extStore = Environment.getExternalStorageDirectory();
+//        String path = extStore.getAbsolutePath() + "/Tango_Image_Read/Depth_data.txt";
+//
+//        try {
+//            File myFile = new File(path);
+//            OutputStream outputfilestream = new FileOutputStream(myFile);
+//            outputfilestream.write(Arrays.toString(points_rough).getBytes());
+//            outputfilestream.close();
+//
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+
+
         // test speed. -libn
-        Log.w("Tango_depth","Sending Data!!!");
+//        Log.w("Tango_depth","Sending Data!!!");
         HttpURLConnection urlConnection = null;
         JSONObject jsonObject = new JSONObject();
         // 1) package the data in JSON form using jsonObject.put(). -libn
