@@ -14,4 +14,4 @@ For example:
 192.168.1.12
 ```
 
-## 3 Connect to the phone (on server) using FlaskWithAndroid
+## 3 Connect to the phone (on server) using [FlaskWithAndroid](https://github.com/bing0037/FlaskWithAndroid)
